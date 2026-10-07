@@ -1,0 +1,21 @@
+# Local Postgres for development. Start with `pnpm db:up`.
+# Host port 5433 so it does not clash with another local Postgres on 5432.
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: typr
+      POSTGRES_PASSWORD: typr
+      POSTGRES_DB: typr
+    ports:
+      - "5433:5432"
+    volumes:
+      - typr-db:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U typr -d typr"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+volumes:
+  typr-db:
