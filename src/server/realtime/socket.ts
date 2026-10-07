@@ -13,16 +13,15 @@ import { clientMessage } from "./protocol.ts";
 
 const MAX_MESSAGE_BYTES = 4096;
 
-// Registered at /api/ws in vite.config.ts (Nitro route, outside the Start router).
 export default defineWebSocketHandler({
 	upgrade(request) {
-		// Stops cross site websocket hijacking: the socket will trust the auth cookie.
 		if (request.headers.get("origin") !== env.APP_URL) {
 			throw new Response("Forbidden", { status: 403 });
 		}
 	},
 	open(peer) {
 		addPeer(peer);
+		peer.subscribe("lobby");
 	},
 	message(peer, message) {
 		markAlive(peer);
@@ -49,7 +48,8 @@ export default defineWebSocketHandler({
 		}
 		switch (parsed.data.type) {
 			case "echo":
-				send(peer, { type: "echo", text: parsed.data.text });
+				for (const p of peer.peers)
+					send(p, { type: "echo", text: parsed.data.text });
 				break;
 		}
 	},

@@ -1,8 +1,5 @@
 import { z } from "zod";
 
-// Every websocket message is JSON text, one of these unions keyed by `type`.
-// `echo` is a placeholder; add real message types here.
-
 export const clientMessage = z.discriminatedUnion("type", [
 	z.object({ type: z.literal("echo"), text: z.string().max(1000) }),
 ]);

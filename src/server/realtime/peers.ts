@@ -12,7 +12,6 @@ type PeerState = {
 	windowCount: number;
 };
 
-// In memory is valid only because exactly one app instance runs.
 const peers = new Map<Peer, PeerState>();
 let heartbeat: ReturnType<typeof setInterval> | undefined;
 
@@ -39,7 +38,6 @@ export function markAlive(peer: Peer) {
 	if (state) state.missedPings = 0;
 }
 
-/** Counts a message against the per socket rate limit. Returns false once the peer goes over it. */
 export function withinRateLimit(peer: Peer) {
 	const state = peers.get(peer);
 	if (!state) return false;
@@ -64,7 +62,6 @@ function sweep() {
 	}
 }
 
-/** Called on SIGTERM: tell every socket the server is restarting, then close it. */
 export function closeAllPeers() {
 	for (const peer of peers.keys()) {
 		send(peer, { type: "server_restarting" });
