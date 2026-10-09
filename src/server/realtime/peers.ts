@@ -1,6 +1,6 @@
 import type { WebSocketPeer as Peer } from "nitro/h3";
 
-import type { ServerMessage } from "./protocol.ts";
+import type { ServerMessage } from "./protocol";
 
 const HEARTBEAT_MS = 20_000;
 const MAX_MISSED_PINGS = 2;

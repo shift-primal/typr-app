@@ -1,15 +1,9 @@
 import { defineWebSocketHandler } from "nitro";
 
-import { env } from "#/env.ts";
-
-import {
-	addPeer,
-	markAlive,
-	removePeer,
-	send,
-	withinRateLimit,
-} from "./peers.ts";
-import { clientMessage } from "./protocol.ts";
+import { env } from "#/env";
+import { createRoom, joinRoom, leaveCurrentRoom } from "#/server/realtime/room";
+import { addPeer, markAlive, removePeer, send, withinRateLimit } from "./peers";
+import { clientMessage } from "./protocol";
 
 const MAX_MESSAGE_BYTES = 4096;
 
@@ -47,19 +41,29 @@ export default defineWebSocketHandler({
 			return;
 		}
 		switch (parsed.data.type) {
-			case "echo":
-				for (const p of peer.peers)
-					send(p, { type: "echo", text: parsed.data.text });
+			case "create_room":
+				createRoom(peer);
 				break;
+			case "join_room":
+				joinRoom(peer, parsed.data.roomId);
+				break;
+			case "echo": {
+				const payload = { type: "echo", text: parsed.data.text } as const;
+				send(peer, payload);
+				peer.publish("lobby", JSON.stringify(payload));
+				break;
+			}
 		}
 	},
 	pong(peer) {
 		markAlive(peer);
 	},
 	close(peer) {
+		leaveCurrentRoom(peer);
 		removePeer(peer);
 	},
 	error(peer) {
+		leaveCurrentRoom(peer);
 		removePeer(peer);
 	},
 });

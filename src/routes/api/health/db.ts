@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { sql } from "#/db/index.ts";
+import { sql } from "#/db/index";
 
 export const Route = createFileRoute("/api/health/db")({
 	server: {

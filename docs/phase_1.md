@@ -2,18 +2,18 @@
 
 ### 1. Client hook
 
-- [ ] Build a useSocket() React hook that connects, sends echo and shows replies on the page.
-- [ ] Learn: the connection lifecycle (open/message/close/error), readyState, why you can't send before open, and cleaning up on unmount (React StrictMode connects twice in dev).
+- [x] Build a useSocket() React hook that connects, sends echo and shows replies on the page.
+- [x] Learn: the connection lifecycle (open/message/close/error), readyState, why you can't send before open, and cleaning up on unmount (React StrictMode connects twice in dev).
 
 ### 2. Shared message types
 
-- [ ] Import protocol.ts on the client too, and parse every incoming message with Zod.
-- [ ] Learn: one source of truth for the protocol, and never trusting what comes over the wire in either direction.
+- [x] Import protocol.ts on the client too, and parse every incoming message with Zod.
+- [x] Learn: one source of truth for the protocol, and never trusting what comes over the wire in either direction.
 
 ### 3. Broadcast chat
 
-- [ ] Anyone connected can send a message and everyone sees it.
-- [ ] Learn: the server as a relay. Try a manual loop over peers first, then crossws pub/sub (peer.subscribe("lobby") / peer.publish(...)).
+- [x] Anyone connected can send a message and everyone sees it.
+- [x] Learn: the server as a relay. Try a manual loop over peers first, then crossws pub/sub (peer.subscribe("lobby") / peer.publish(...)).
 
 ### 4. Rooms
 

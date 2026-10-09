@@ -1,7 +1,7 @@
 import { definePlugin } from "nitro";
 
-import { sql } from "#/db/index.ts";
-import { closeAllPeers } from "#/server/realtime/peers.ts";
+import { sql } from "#/db/index";
+import { closeAllPeers } from "#/server/realtime/peers";
 
 export default definePlugin(() => {
 	let shuttingDown = false;
