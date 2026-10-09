@@ -6,9 +6,8 @@ import {
 	Scripts,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
-
+import { Toaster } from "#/components/ui/toast";
 import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
-
 import appCss from "../styles.css?url";
 
 interface MyRouterContext {
@@ -21,7 +20,8 @@ const RootDocument = ({ children }: { children: React.ReactNode }) => (
 			<HeadContent />
 		</head>
 		<body>
-			{children}
+			<main className="h-dvh">{children}</main>
+			<Toaster />
 			{import.meta.env.DEV && (
 				<TanStackDevtools
 					config={{
