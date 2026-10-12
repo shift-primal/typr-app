@@ -1,4 +1,5 @@
 import type { WebSocketPeer as Peer } from "nitro/h3";
+
 import { send } from "./peers";
 
 type Room = {
@@ -9,6 +10,16 @@ type Room = {
 const rooms = new Map<string, Room>();
 
 const peerToRoom = new Map<Peer, string>();
+
+const logRooms = () => {
+	console.log(
+		"rooms",
+		[...rooms.values()].map((room) => ({
+			id: room.id,
+			players: [...room.peers].map((peer) => peer.id),
+		})),
+	);
+};
 
 const generateRoomCode = (): string => {
 	const chars = "ABCD1234";
@@ -37,6 +48,8 @@ export const createRoom = (peer: Peer): string => {
 		players: [peer.id],
 	});
 
+	logRooms();
+
 	return roomId;
 };
 
@@ -64,6 +77,8 @@ export const joinRoom = (peer: Peer, roomId: string) => {
 		`room:${roomId}`,
 		JSON.stringify({ type: "player_joined", id: peer.id }),
 	);
+
+	logRooms();
 };
 
 export const leaveCurrentRoom = (peer: Peer) => {
@@ -86,4 +101,6 @@ export const leaveCurrentRoom = (peer: Peer) => {
 	if (room.peers.size === 0) {
 		rooms.delete(roomId);
 	}
+
+	logRooms();
 };

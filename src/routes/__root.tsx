@@ -6,8 +6,11 @@ import {
 	Scripts,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
+
 import { Toaster } from "#/components/ui/toast";
+
 import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
+
 import appCss from "../styles.css?url";
 
 interface MyRouterContext {

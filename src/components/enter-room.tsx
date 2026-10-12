@@ -1,5 +1,6 @@
 import { useForm } from "@tanstack/react-form";
 import { z } from "zod";
+
 import { Button } from "#/components/ui/button";
 import {
 	Card,
@@ -19,13 +20,42 @@ import {
 } from "#/components/ui/field";
 import { Input } from "#/components/ui/input";
 import { toast } from "#/components/ui/toast";
+import type { Socket } from "#/hooks/use-socket";
+import type { ClientMessage } from "#/server/realtime/protocol";
 
 const formSchema = z.object({
 	roomId: z.string().length(4, 'Invalid Room ID. Valid Format: "A1B2"'),
 	name: z.string().min(2, "Minimum 2 characters").max(16, "Max 16 characters"),
 });
 
-export const JoinRoom = () => {
+const requestRoom = async (
+	socket: Socket,
+	message: ClientMessage,
+	successTitle: string,
+) => {
+	try {
+		const reply = await socket.request(message);
+		if (reply.type === "room_error") {
+			toast.add({ title: "Could not enter room", description: reply.message });
+			return;
+		}
+		if (reply.type !== "room_joined") return;
+		toast.add({
+			title: successTitle,
+			description: `Successfully entered room ${reply.roomId}`,
+		});
+	} catch (e) {
+		console.error(e);
+	}
+};
+
+const joinRoom = (socket: Socket, roomId: string) =>
+	requestRoom(socket, { type: "join_room", roomId }, "Joined room!");
+
+const createRoom = (socket: Socket) =>
+	requestRoom(socket, { type: "create_room" }, "Created room!");
+
+export const EnterRoom = ({ socket }: { socket: Socket }) => {
 	const form = useForm({
 		defaultValues: {
 			roomId: "",
@@ -34,12 +64,8 @@ export const JoinRoom = () => {
 		validators: {
 			onSubmit: formSchema,
 		},
-		onSubmit: async ({ value }) => {
-			toast.add({
-				title: "Joined room!",
-				description: `Successfully joined room ${value.roomId}`,
-			});
-			console.log("shit");
+		onSubmit: ({ value }) => {
+			joinRoom(socket, value.roomId);
 		},
 	});
 
@@ -130,6 +156,13 @@ export const JoinRoom = () => {
 					</Button>
 					<Button type="submit" form="join-or-create-room" variant="outline">
 						Submit
+					</Button>
+					<Button
+						type="button"
+						variant="default"
+						onClick={() => createRoom(socket)}
+					>
+						Create
 					</Button>
 				</Field>
 			</CardFooter>
