@@ -1,4 +1,5 @@
 import { useForm } from "@tanstack/react-form";
+import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { Button } from "#/components/ui/button";
@@ -20,13 +21,17 @@ import {
 } from "#/components/ui/field";
 import { Input } from "#/components/ui/input";
 import { toast } from "#/components/ui/toast";
+import { useSocketContext } from "#/hooks/socket-provider";
 import type { Socket } from "#/hooks/use-socket";
 import type { ClientMessage } from "#/server/realtime/protocol";
 
-const formSchema = z.object({
-	roomId: z.string().length(4, 'Invalid Room ID. Valid Format: "A1B2"'),
-	name: z.string().min(2, "Minimum 2 characters").max(16, "Max 16 characters"),
-});
+const nameSchema = z
+	.string()
+	.min(2, "Minimum 2 characters")
+	.max(16, "Max 16 characters");
+const roomIdSchema = z
+	.string()
+	.length(4, 'Invalid Room ID. Valid Format: "A1B2"');
 
 const requestRoom = async (
 	socket: Socket,
@@ -35,39 +40,54 @@ const requestRoom = async (
 ) => {
 	try {
 		const reply = await socket.request(message);
+
 		if (reply.type === "room_error") {
 			toast.add({ title: "Could not enter room", description: reply.message });
 			return;
 		}
+
 		if (reply.type !== "room_joined") return;
+
 		toast.add({
 			title: successTitle,
 			description: `Successfully entered room ${reply.roomId}`,
 		});
+
+		return reply.roomId;
 	} catch (e) {
 		console.error(e);
 	}
 };
 
-const joinRoom = (socket: Socket, roomId: string) =>
-	requestRoom(socket, { type: "join_room", roomId }, "Joined room!");
+const joinRoom = (socket: Socket, roomId: string, name: string) =>
+	requestRoom(socket, { type: "join_room", roomId, name }, "Joined room!");
 
-const createRoom = (socket: Socket) =>
-	requestRoom(socket, { type: "create_room" }, "Created room!");
+const createRoom = (socket: Socket, name: string) =>
+	requestRoom(socket, { type: "create_room", name }, "Created room!");
 
-export const EnterRoom = ({ socket }: { socket: Socket }) => {
+export const EnterRoom = () => {
+	const socket = useSocketContext();
+	const navigate = useNavigate();
+
+	const enter = async (roomId: Promise<string | undefined>) => {
+		const id = await roomId;
+		if (id) await navigate({ to: "/room/$roomId", params: { roomId: id } });
+	};
+
 	const form = useForm({
 		defaultValues: {
 			roomId: "",
 			name: "",
 		},
-		validators: {
-			onSubmit: formSchema,
-		},
-		onSubmit: ({ value }) => {
-			joinRoom(socket, value.roomId);
-		},
+		onSubmit: ({ value }) => enter(joinRoom(socket, value.roomId, value.name)),
 	});
+
+	const create = async () => {
+		await form.validateField("name", "change");
+		form.setFieldMeta("name", (meta) => ({ ...meta, isTouched: true }));
+		if (!form.getFieldMeta("name")?.isValid) return;
+		await enter(createRoom(socket, form.getFieldValue("name")));
+	};
 
 	return (
 		<Card className="w-full sm:max-w-md">
@@ -82,42 +102,12 @@ export const EnterRoom = ({ socket }: { socket: Socket }) => {
 					id="join-or-create-room"
 					onSubmit={(e) => {
 						e.preventDefault();
-						form.handleSubmit();
+						void form.handleSubmit();
 					}}
 				>
 					<FieldSet>
 						<FieldGroup>
-							<form.Field name="roomId">
-								{(field) => {
-									const isInvalid =
-										field.state.meta.isTouched && !field.state.meta.isValid;
-									return (
-										<Field data-invalid={isInvalid}>
-											<FieldLabel htmlFor={field.name}>Room ID</FieldLabel>
-											<Input
-												type="text"
-												id={field.name}
-												name={field.name}
-												value={field.state.value}
-												onBlur={field.handleBlur}
-												onChange={(e) => field.handleChange(e.target.value)}
-												aria-invalid={isInvalid}
-												placeholder="A1B2"
-												autoComplete="off"
-											/>
-											{isInvalid && (
-												<FieldError errors={field.state.meta.errors} />
-											)}
-											<FieldDescription>
-												The ID for the room you want to join
-											</FieldDescription>
-										</Field>
-									);
-								}}
-							</form.Field>
-						</FieldGroup>
-						<FieldGroup>
-							<form.Field name="name">
+							<form.Field name="name" validators={{ onChange: nameSchema }}>
 								{(field) => {
 									const isInvalid =
 										field.state.meta.isTouched && !field.state.meta.isValid;
@@ -146,6 +136,36 @@ export const EnterRoom = ({ socket }: { socket: Socket }) => {
 								}}
 							</form.Field>
 						</FieldGroup>
+						<FieldGroup>
+							<form.Field name="roomId" validators={{ onSubmit: roomIdSchema }}>
+								{(field) => {
+									const isInvalid =
+										field.state.meta.isTouched && !field.state.meta.isValid;
+									return (
+										<Field data-invalid={isInvalid}>
+											<FieldLabel htmlFor={field.name}>Room ID</FieldLabel>
+											<Input
+												type="text"
+												id={field.name}
+												name={field.name}
+												value={field.state.value}
+												onBlur={field.handleBlur}
+												onChange={(e) => field.handleChange(e.target.value)}
+												aria-invalid={isInvalid}
+												placeholder="A1B2"
+												autoComplete="off"
+											/>
+											{isInvalid && (
+												<FieldError errors={field.state.meta.errors} />
+											)}
+											<FieldDescription>
+												Only needed to join an existing room
+											</FieldDescription>
+										</Field>
+									);
+								}}
+							</form.Field>
+						</FieldGroup>
 					</FieldSet>
 				</form>
 			</CardContent>
@@ -155,13 +175,9 @@ export const EnterRoom = ({ socket }: { socket: Socket }) => {
 						Reset
 					</Button>
 					<Button type="submit" form="join-or-create-room" variant="outline">
-						Submit
+						Join
 					</Button>
-					<Button
-						type="button"
-						variant="default"
-						onClick={() => createRoom(socket)}
-					>
+					<Button type="button" variant="default" onClick={create}>
 						Create
 					</Button>
 				</Field>

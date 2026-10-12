@@ -1,9 +1,17 @@
 import { z } from "zod";
 
+const playerName = z.string().min(2).max(16);
+
+const player = z.object({ id: z.string(), name: playerName });
+
 export const clientMessage = z.discriminatedUnion("type", [
 	z.object({ type: z.literal("echo"), text: z.string().max(1000) }),
-	z.object({ type: z.literal("create_room") }),
-	z.object({ type: z.literal("join_room"), roomId: z.string().length(4) }),
+	z.object({ type: z.literal("create_room"), name: playerName }),
+	z.object({
+		type: z.literal("join_room"),
+		roomId: z.string().length(4),
+		name: playerName,
+	}),
 ]);
 
 export const serverMessage = z.discriminatedUnion("type", [
@@ -12,9 +20,9 @@ export const serverMessage = z.discriminatedUnion("type", [
 	z.object({
 		type: z.literal("room_joined"),
 		roomId: z.string(),
-		players: z.array(z.string()),
+		players: z.array(player),
 	}),
-	z.object({ type: z.literal("player_joined"), id: z.string() }),
+	z.object({ type: z.literal("player_joined"), player }),
 	z.object({ type: z.literal("player_left"), id: z.string() }),
 	z.object({ type: z.literal("room_error"), message: z.string() }),
 ]);

@@ -11,6 +11,8 @@ const rooms = new Map<string, Room>();
 
 const peerToRoom = new Map<Peer, string>();
 
+const peerNames = new Map<Peer, string>();
+
 const logRooms = () => {
 	console.log(
 		"rooms",
@@ -32,8 +34,9 @@ const generateRoomCode = (): string => {
 	return rooms.has(code) ? generateRoomCode() : code;
 };
 
-export const createRoom = (peer: Peer): string => {
+export const createRoom = (peer: Peer, name: string): string => {
 	leaveCurrentRoom(peer);
+	peerNames.set(peer, name);
 
 	const roomId = generateRoomCode();
 	const room: Room = { id: roomId, peers: new Set([peer]) };
@@ -45,7 +48,7 @@ export const createRoom = (peer: Peer): string => {
 	send(peer, {
 		type: "room_joined",
 		roomId,
-		players: [peer.id],
+		players: [{ id: peer.id, name }],
 	});
 
 	logRooms();
@@ -53,7 +56,7 @@ export const createRoom = (peer: Peer): string => {
 	return roomId;
 };
 
-export const joinRoom = (peer: Peer, roomId: string) => {
+export const joinRoom = (peer: Peer, roomId: string, name: string) => {
 	const room = rooms.get(roomId);
 	if (!room) {
 		send(peer, { type: "room_error", message: "Room not found" });
@@ -61,6 +64,7 @@ export const joinRoom = (peer: Peer, roomId: string) => {
 	}
 
 	leaveCurrentRoom(peer);
+	peerNames.set(peer, name);
 
 	room.peers.add(peer);
 	peerToRoom.set(peer, roomId);
@@ -70,12 +74,15 @@ export const joinRoom = (peer: Peer, roomId: string) => {
 	send(peer, {
 		type: "room_joined",
 		roomId,
-		players: Array.from(room.peers).map((p) => p.id),
+		players: Array.from(room.peers).map((p) => ({
+			id: p.id,
+			name: peerNames.get(p) ?? "Unknown",
+		})),
 	});
 
 	peer.publish(
 		`room:${roomId}`,
-		JSON.stringify({ type: "player_joined", id: peer.id }),
+		JSON.stringify({ type: "player_joined", player: { id: peer.id, name } }),
 	);
 
 	logRooms();
@@ -86,6 +93,7 @@ export const leaveCurrentRoom = (peer: Peer) => {
 	if (!roomId) return;
 
 	peerToRoom.delete(peer);
+	peerNames.delete(peer);
 	peer.unsubscribe(`room:${roomId}`);
 
 	const room = rooms.get(roomId);

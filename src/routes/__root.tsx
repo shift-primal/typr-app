@@ -8,6 +8,7 @@ import {
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 
 import { Toaster } from "#/components/ui/toast";
+import { SocketProvider } from "#/hooks/socket-provider";
 
 import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
 
@@ -23,8 +24,10 @@ const RootDocument = ({ children }: { children: React.ReactNode }) => (
 			<HeadContent />
 		</head>
 		<body>
-			<main className="h-dvh">{children}</main>
-			<Toaster />
+			<SocketProvider>
+				<main className="h-dvh">{children}</main>
+				<Toaster />
+			</SocketProvider>
 			{import.meta.env.DEV && (
 				<TanStackDevtools
 					config={{
