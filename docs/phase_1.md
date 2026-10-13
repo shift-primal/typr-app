@@ -17,8 +17,8 @@
 
 ### 4. Rooms
 
-- [ ] Create a room, get a code, join by code, and see who's in the room. Room state lives in a Map on the server.
-- [ ] Learn: the server owns state, clients only show it. Clean up on close (empty rooms get deleted). Send the full state when someone joins, then only changes after that.
+- [x] Create a room, get a code, join by code, and see who's in the room. Room state lives in a Map on the server.
+- [x] Learn: the server owns state, clients only show it. Clean up on close (empty rooms get deleted). Send the full state when someone joins, then only changes after that.
 
 ### 5. Breaking it on purpose
 

@@ -14,10 +14,14 @@ const config = defineConfig({
 		useTabs: true,
 		printWidth: 80,
 		sortImports: true,
-		ignorePatterns: ["src/routeTree.gen.ts", "src/styles.css"],
+		ignorePatterns: [
+			"src/routeTree.gen.ts",
+			"src/styles.css",
+			"./node_modules/*",
+		],
 	},
 	lint: {
-		ignorePatterns: ["src/routeTree.gen.ts"],
+		ignorePatterns: ["src/routeTree.gen.ts", "./node_modules/*"],
 		jsPlugins: [{ name: "vite-plus", specifier: "vite-plus/oxlint-plugin" }],
 		rules: { "vite-plus/prefer-vite-plus-imports": "error" },
 		options: { typeAware: true, typeCheck: true },
