@@ -1,41 +1,40 @@
+import { RotateCcw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { InvisibleInput } from "#/components/invisible-input";
 import { TargetText } from "#/components/target-text";
-import { generateText } from "#/game/text";
-import { createTyping, type TypingState } from "#/game/typing";
+import { Timer } from "#/components/timer";
+import { applyInput, createTyping, type TypingState } from "#/game/typing";
+
+const blankTyping = (): TypingState => ({
+	target: "",
+	typed: "",
+	startedAt: null,
+	finishedAt: null,
+	keystrokes: 0,
+	errors: 0,
+});
 
 export const Typing = () => {
-	const target = generateText();
-
-	const [typingState, setTypingState] = useState<TypingState>(() =>
-		createTyping(target),
-	);
-
-	const [now, setNow] = useState(() => Date.now());
+	const [typingState, setTypingState] = useState<TypingState>(blankTyping);
 
 	const inputRef = useRef<HTMLInputElement>(null);
 
-	const running =
-		typingState.startedAt !== null && typingState.finishedAt !== null;
-
 	useEffect(() => {
-		if (!running) return;
-		const id = setInterval(() => setNow(Date.now()), 250);
-		return () => clearInterval(id);
-	}, [running]);
+		setTypingState(createTyping());
+	}, []);
 
 	const restart = () => {
-		setTypingState(createTyping(target));
+		setTypingState(createTyping());
 		inputRef.current?.focus();
 	};
 
 	const handleChange = (value: string) =>
-		setTypingState((p) => ({ ...p, typed: value }));
+		setTypingState((p) => applyInput(p, value, Date.now()));
 
 	return (
 		<div
-			className="w-full h-full"
+			className="w-full h-full flex items-center justify-center relative"
 			onClick={() => {
 				inputRef.current?.focus();
 			}}
@@ -46,9 +45,22 @@ export const Typing = () => {
 				onChange={handleChange}
 			/>
 			<TargetText state={typingState} />
-			<button type="button" onClick={restart}>
-				restart
-			</button>
+			<div
+				id="ui"
+				className="absolute bottom-10 right-1/2 translate-1/2 w-md flex items-center justify-between"
+			>
+				<Timer
+					startedAt={typingState.startedAt}
+					finishedAt={typingState.finishedAt}
+				/>
+				<button
+					type="button"
+					onClick={restart}
+					className="border border-foreground p-.5 cursor-pointer"
+				>
+					<RotateCcw />
+				</button>
+			</div>
 		</div>
 	);
 };

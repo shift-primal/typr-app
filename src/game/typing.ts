@@ -1,3 +1,5 @@
+import { generateText } from "#/game/text";
+
 export type TypingState = {
 	target: string;
 	typed: string;
@@ -9,8 +11,8 @@ export type TypingState = {
 
 export type CharacterStatus = "pending" | "correct" | "incorrect";
 
-export const createTyping = (target: string): TypingState => ({
-	target,
+export const createTyping = (): TypingState => ({
+	target: generateText(),
 	typed: "",
 	startedAt: null,
 	finishedAt: null,

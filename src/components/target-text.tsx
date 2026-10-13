@@ -8,14 +8,14 @@ export const TargetText = ({ state }: { state: TypingState }) => {
 	};
 
 	return (
-		<div className="pointer-events-none select-none w-lg mx-auto">
+		<div className="pointer-events-none select-none w-lg">
 			<p className="font-mono text-2xl leading-relaxed">
 				{[...state.target].map((char, i) => (
 					<span
 						key={i}
 						className={[
 							styles[charStatus(state, i)],
-							i === state.typed.length && "border-l-2 border-primary", // cursor
+							i === state.typed.length && "outline outline-offset-1.5", // cursor
 						]
 							.filter(Boolean)
 							.join(" ")}
