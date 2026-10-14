@@ -34,7 +34,11 @@ const generateRoomCode = (): string => {
 	return rooms.has(code) ? generateRoomCode() : code;
 };
 
-export const createRoom = (peer: Peer, name: string): string => {
+export const createRoom = (
+	peer: Peer,
+	name: string,
+	requestId: number,
+): string => {
 	leaveCurrentRoom(peer);
 	peerNames.set(peer, name);
 
@@ -47,7 +51,8 @@ export const createRoom = (peer: Peer, name: string): string => {
 	peer.subscribe(`room:${roomId}`);
 	send(peer, {
 		type: "room_joined",
-		roomId,
+		requestId,
+		roomId: room.id,
 		players: [{ id: peer.id, name }],
 	});
 
@@ -56,10 +61,15 @@ export const createRoom = (peer: Peer, name: string): string => {
 	return roomId;
 };
 
-export const joinRoom = (peer: Peer, roomId: string, name: string) => {
+export const joinRoom = (
+	peer: Peer,
+	roomId: string,
+	name: string,
+	requestId: number,
+) => {
 	const room = rooms.get(roomId);
 	if (!room) {
-		send(peer, { type: "room_error", message: "Room not found" });
+		send(peer, { type: "room_error", requestId, message: "Room not found" });
 		return;
 	}
 
@@ -73,6 +83,7 @@ export const joinRoom = (peer: Peer, roomId: string, name: string) => {
 
 	send(peer, {
 		type: "room_joined",
+		requestId,
 		roomId,
 		players: Array.from(room.peers).map((p) => ({
 			id: p.id,

@@ -22,8 +22,7 @@ import {
 import { Input } from "#/components/ui/input";
 import { toast } from "#/components/ui/toast";
 import { useSocketContext } from "#/hooks/socket-provider";
-import type { Socket } from "#/hooks/use-socket";
-import type { ClientMessage } from "#/server/realtime/protocol";
+import type { RequestMessage, Socket } from "#/hooks/use-socket";
 
 const nameSchema = z
 	.string()
@@ -35,7 +34,7 @@ const roomIdSchema = z
 
 const requestRoom = async (
 	socket: Socket,
-	message: ClientMessage,
+	message: RequestMessage,
 	successTitle: string,
 ) => {
 	try {
@@ -46,8 +45,6 @@ const requestRoom = async (
 			return;
 		}
 
-		if (reply.type !== "room_joined") return;
-
 		toast.add({
 			title: successTitle,
 			description: `Successfully entered room ${reply.roomId}`,
@@ -55,7 +52,10 @@ const requestRoom = async (
 
 		return reply.roomId;
 	} catch (e) {
-		console.error(e);
+		toast.add({
+			title: "Connection problem",
+			description: e instanceof Error ? e.message : String(e),
+		});
 	}
 };
 

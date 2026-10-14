@@ -6,9 +6,29 @@ import {
 	serverMessage,
 } from "#/server/realtime/protocol";
 
+type Reply = Extract<ServerMessage, { requestId: number }>;
+
+type Pending = {
+	resolve: (reply: Reply) => void;
+	reject: (error: Error) => void;
+	timer: ReturnType<typeof setTimeout>;
+};
+
+type DistributiveOmit<T, K extends PropertyKey> = T extends unknown
+	? Omit<T, K>
+	: never;
+
+export type RequestMessage = DistributiveOmit<
+	Extract<ClientMessage, { requestId: number }>,
+	"requestId"
+>;
+
+const REQUEST_TIMEOUT_MS = 5000;
+
 export const useSocket = () => {
 	const ws = useRef<WebSocket | null>(null);
-	const pending = useRef<((message: ServerMessage) => void) | null>(null);
+	const pending = useRef(new Map<number, Pending>());
+	const nextId = useRef(0);
 
 	const [messages, setMessages] = useState<ServerMessage[]>([]);
 	const [status, setStatus] = useState<"connecting" | "open" | "closed">(
@@ -21,6 +41,15 @@ export const useSocket = () => {
 		// Opening the socket before the document finishes loading makes Firefox
 		// abort the handshake ("interrupted while the page was loading").
 		let socket: WebSocket | null = null;
+
+		const rejectAll = (reason: string) => {
+			for (const { reject, timer } of pending.current.values()) {
+				clearTimeout(timer);
+				reject(new Error(reason));
+			}
+			pending.current.clear();
+		};
+
 		const connect = () => {
 			socket = new WebSocket(url);
 			ws.current = socket;
@@ -33,12 +62,13 @@ export const useSocket = () => {
 					const result = serverMessage.safeParse(parsed);
 
 					if (result.success) {
-						if (
-							result.data.type === "room_joined" ||
-							result.data.type === "room_error"
-						) {
-							pending.current?.(result.data);
-							pending.current = null;
+						if ("requestId" in result.data) {
+							const entry = pending.current.get(result.data.requestId);
+							if (entry) {
+								clearTimeout(entry.timer);
+								pending.current.delete(result.data.requestId);
+								entry.resolve(result.data);
+							}
 						}
 
 						setMessages((m) => [...m, result.data]);
@@ -52,7 +82,7 @@ export const useSocket = () => {
 
 			socket.onclose = () => {
 				setStatus("closed");
-				pending.current = null;
+				rejectAll("socket closed");
 			};
 		};
 
@@ -61,6 +91,7 @@ export const useSocket = () => {
 
 		return () => {
 			window.removeEventListener("load", connect);
+			rejectAll("socket closed");
 			if (!socket) return;
 			socket.onopen = socket.onmessage = socket.onclose = null;
 			socket.close();
@@ -72,14 +103,23 @@ export const useSocket = () => {
 			ws.current.send(JSON.stringify(message));
 	};
 
-	const request = (message: ClientMessage) =>
-		new Promise<ServerMessage>((resolve, reject) => {
-			if (ws.current?.readyState !== WebSocket.OPEN) {
+	const request = (message: RequestMessage) =>
+		new Promise<Reply>((resolve, reject) => {
+			const socket = ws.current;
+			if (socket?.readyState !== WebSocket.OPEN) {
 				reject(new Error("socket closed"));
 				return;
 			}
-			pending.current = resolve;
-			ws.current.send(JSON.stringify(message));
+
+			const id = nextId.current++;
+
+			const timer = setTimeout(() => {
+				pending.current.delete(id);
+				reject(new Error("request timed out"));
+			}, REQUEST_TIMEOUT_MS);
+
+			pending.current.set(id, { resolve, reject, timer });
+			socket.send(JSON.stringify({ ...message, requestId: id }));
 		});
 
 	return { status, messages, send, request };

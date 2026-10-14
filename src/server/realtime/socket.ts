@@ -43,10 +43,15 @@ export default defineWebSocketHandler({
 		}
 		switch (parsed.data.type) {
 			case "create_room":
-				createRoom(peer, parsed.data.name);
+				createRoom(peer, parsed.data.name, parsed.data.requestId);
 				break;
 			case "join_room":
-				joinRoom(peer, parsed.data.roomId, parsed.data.name);
+				joinRoom(
+					peer,
+					parsed.data.roomId,
+					parsed.data.name,
+					parsed.data.requestId,
+				);
 				break;
 			case "echo": {
 				const payload = { type: "echo", text: parsed.data.text } as const;
