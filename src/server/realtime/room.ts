@@ -1,27 +1,18 @@
 import type { WebSocketPeer as Peer } from "nitro/h3";
 
+import type { ServerMessage } from "#/shared/protocol";
+
 import { send } from "./peers";
+
+type RoomPlayer = { id: string; name: string; peer: Peer };
 
 type Room = {
 	id: string;
-	peers: Set<Peer>;
+	players: Map<string, RoomPlayer>;
 };
 
 const rooms = new Map<string, Room>();
-
-const peerToRoom = new Map<Peer, string>();
-
-const peerNames = new Map<Peer, string>();
-
-const logRooms = () => {
-	console.log(
-		"rooms",
-		[...rooms.values()].map((room) => ({
-			id: room.id,
-			players: [...room.peers].map((peer) => peer.id),
-		})),
-	);
-};
+const sessions = new Map<Peer, { roomId: string; playerId: string }>();
 
 const generateRoomCode = (): string => {
 	const chars = "ABCD1234";
@@ -34,31 +25,16 @@ const generateRoomCode = (): string => {
 	return rooms.has(code) ? generateRoomCode() : code;
 };
 
-export const createRoom = (
-	peer: Peer,
-	name: string,
-	requestId: number,
-): string => {
-	leaveCurrentRoom(peer);
-	peerNames.set(peer, name);
+const broadcast = (room: Room, message: ServerMessage, except?: string) => {
+	for (const player of room.players.values()) {
+		if (player.id !== except) send(player.peer, message);
+	}
+};
 
-	const roomId = generateRoomCode();
-	const room: Room = { id: roomId, peers: new Set([peer]) };
-
-	rooms.set(roomId, room);
-	peerToRoom.set(peer, roomId);
-
-	peer.subscribe(`room:${roomId}`);
-	send(peer, {
-		type: "room_joined",
-		requestId,
-		roomId: room.id,
-		players: [{ id: peer.id, name }],
-	});
-
-	logRooms();
-
-	return roomId;
+export const createRoom = (peer: Peer, name: string, requestId: number) => {
+	const room: Room = { id: generateRoomCode(), players: new Map() };
+	rooms.set(room.id, room);
+	enterRoom(peer, room, name, requestId);
 };
 
 export const joinRoom = (
@@ -72,54 +48,58 @@ export const joinRoom = (
 		send(peer, { type: "room_error", requestId, message: "Room not found" });
 		return;
 	}
+	enterRoom(peer, room, name, requestId);
+};
+
+const toPlayers = (room: Room) =>
+	[...room.players.values()].map(({ id, name }) => ({ id, name }));
+
+const enterRoom = (peer: Peer, room: Room, name: string, requestId: number) => {
+	if (sessions.get(peer)?.roomId === room.id) {
+		send(peer, {
+			type: "room_joined",
+			requestId,
+			roomId: room.id,
+			players: toPlayers(room),
+		});
+		return;
+	}
 
 	leaveCurrentRoom(peer);
-	peerNames.set(peer, name);
 
-	room.peers.add(peer);
-	peerToRoom.set(peer, roomId);
-
-	peer.subscribe(`room:${roomId}`);
+	const player: RoomPlayer = { id: peer.id, name, peer };
+	room.players.set(player.id, player);
+	sessions.set(peer, { roomId: room.id, playerId: player.id });
 
 	send(peer, {
 		type: "room_joined",
 		requestId,
-		roomId,
-		players: Array.from(room.peers).map((p) => ({
-			id: p.id,
-			name: peerNames.get(p) ?? "Unknown",
-		})),
+		roomId: room.id,
+		players: toPlayers(room),
 	});
 
-	peer.publish(
-		`room:${roomId}`,
-		JSON.stringify({ type: "player_joined", player: { id: peer.id, name } }),
+	broadcast(
+		room,
+		{ type: "player_joined", player: { id: player.id, name } },
+		player.id,
 	);
-
-	logRooms();
 };
 
 export const leaveCurrentRoom = (peer: Peer) => {
-	const roomId = peerToRoom.get(peer);
-	if (!roomId) return;
+	const session = sessions.get(peer);
+	if (!session) return;
 
-	peerToRoom.delete(peer);
-	peerNames.delete(peer);
-	peer.unsubscribe(`room:${roomId}`);
+	sessions.delete(peer);
 
-	const room = rooms.get(roomId);
+	const room = rooms.get(session.roomId);
 	if (!room) return;
 
-	room.peers.delete(peer);
+	room.players.delete(session.playerId);
 
-	peer.publish(
-		`room:${roomId}`,
-		JSON.stringify({ type: "player_left", id: peer.id }),
-	);
-
-	if (room.peers.size === 0) {
-		rooms.delete(roomId);
+	if (room.players.size === 0) {
+		rooms.delete(room.id);
+		return;
 	}
 
-	logRooms();
+	broadcast(room, { type: "player_left", id: session.playerId });
 };
