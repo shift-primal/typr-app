@@ -2,9 +2,9 @@ import { defineWebSocketHandler } from "nitro";
 
 import { env } from "#/env";
 import { createRoom, joinRoom, leaveCurrentRoom } from "#/server/realtime/room";
+import { clientMessage } from "#/shared/protocol";
 
 import { addPeer, markAlive, removePeer, send, withinRateLimit } from "./peers";
-import { clientMessage } from "./protocol";
 
 const MAX_MESSAGE_BYTES = 4096;
 

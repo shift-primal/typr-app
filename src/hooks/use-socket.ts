@@ -4,7 +4,8 @@ import {
 	type ClientMessage,
 	type ServerMessage,
 	serverMessage,
-} from "#/server/realtime/protocol";
+} from "#/shared/protocol";
+import { handleServerMessage, roomStore } from "#/stores/room-store";
 
 type Reply = Extract<ServerMessage, { requestId: number }>;
 
@@ -30,7 +31,6 @@ export const useSocket = () => {
 	const pending = useRef(new Map<number, Pending>());
 	const nextId = useRef(0);
 
-	const [messages, setMessages] = useState<ServerMessage[]>([]);
 	const [status, setStatus] = useState<"connecting" | "open" | "closed">(
 		"connecting",
 	);
@@ -71,7 +71,7 @@ export const useSocket = () => {
 							}
 						}
 
-						setMessages((m) => [...m, result.data]);
+						handleServerMessage(result.data);
 					} else {
 						console.warn("Invalid message:", result.error);
 					}
@@ -82,6 +82,7 @@ export const useSocket = () => {
 
 			socket.onclose = () => {
 				setStatus("closed");
+				roomStore.actions.reset();
 				rejectAll("socket closed");
 			};
 		};
@@ -122,7 +123,7 @@ export const useSocket = () => {
 			socket.send(JSON.stringify({ ...message, requestId: id }));
 		});
 
-	return { status, messages, send, request };
+	return { status, send, request };
 };
 
 export type Socket = ReturnType<typeof useSocket>;

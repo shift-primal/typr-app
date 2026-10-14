@@ -27,18 +27,22 @@ const config = defineConfig({
 		options: { typeAware: true, typeCheck: true },
 	},
 	resolve: { tsconfigPaths: true },
-	plugins: lazyPlugins(() => [
-		devtools(),
-		nitro({
-			features: { websocket: true },
-			routes: { "/api/ws": "./src/server/realtime/socket.ts" },
-			plugins: ["./src/server/plugins/shutdown.ts"],
-		}),
-		tailwindcss(),
-		tanstackStart(),
-		viteReact(),
-		babel({ presets: [reactCompilerPreset()] }),
-	]),
+	plugins: lazyPlugins(() =>
+		process.env.VITEST
+			? []
+			: [
+					devtools(),
+					nitro({
+						features: { websocket: true },
+						routes: { "/api/ws": "./src/server/realtime/socket.ts" },
+						plugins: ["./src/server/plugins/shutdown.ts"],
+					}),
+					tailwindcss(),
+					tanstackStart(),
+					viteReact(),
+					babel({ presets: [reactCompilerPreset()] }),
+				],
+	),
 });
 
 export default config;

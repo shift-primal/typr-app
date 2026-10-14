@@ -1,32 +1,10 @@
-import { useMemo } from "react";
+import { useSelector } from "@tanstack/react-store";
 
-import { useSocketContext } from "#/hooks/socket-provider";
+import { roomStore } from "#/stores/room-store";
 
 export const Room = () => {
-	const socket = useSocketContext();
-
-	const { roomId, players } = useMemo(() => {
-		let roomId: string | null = null;
-		let players: { id: string; name: string }[] = [];
-
-		for (const m of socket.messages) {
-			switch (m.type) {
-				case "room_joined":
-					roomId = m.roomId;
-					players = m.players;
-					break;
-				case "player_joined":
-					if (!players.some((p) => p.id === m.player.id))
-						players = [...players, m.player];
-					break;
-				case "player_left":
-					players = players.filter((p) => p.id !== m.id);
-					break;
-			}
-		}
-
-		return { roomId, players };
-	}, [socket.messages]);
+	const roomId = useSelector(roomStore, (s) => s.roomId);
+	const players = useSelector(roomStore, (s) => s.players);
 
 	if (!roomId) return null;
 

@@ -4,6 +4,8 @@ const playerName = z.string().min(2).max(16);
 
 const player = z.object({ id: z.string(), name: playerName });
 
+export type Player = z.infer<typeof player>;
+
 export const clientMessage = z.discriminatedUnion("type", [
 	z.object({ type: z.literal("echo"), text: z.string().max(1000) }),
 	z.object({
